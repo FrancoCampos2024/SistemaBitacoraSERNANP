@@ -1,0 +1,135 @@
+<!-- Fragmento: Modal para registrar unidad -->
+<div th:fragment="modalNuevaUnidad(unidad, tipounidad, tipocombustible)" xmlns:th="http://www.thymeleaf.org">
+    <div class="modal fade" id="modalNuevaUnidad" tabindex="-1" aria-labelledby="modalNuevaUnidadLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+
+                <form th:action="@{/Unidades/Agregar}" th:object="${unidad}" method="post" onsubmit="deshabilitarBoton(this)">
+                    <div class="modal-header" style="background-color: #275d44;">
+                        <h5 class="modal-title fw-bold text-white" id="modalNuevaUnidadLabel">
+                            <i class="bi bi-journal-plus me-2"></i> REGISTRO DE UNIDAD
+                        </h5>
+                        <a th:href="@{/Unidades/ListaUnidades}" class="btn-close btn-close-white" role="button" aria-label="Cerrar"></a>
+                    </div>
+
+                    <div class="modal-body bg-light">
+                        <!-- Identificador -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold d-block">
+                                Identificador <span style="color: red;">*</span>
+                            </label>
+
+                            <!-- Radio: Placa o Serie -->
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="tipoIdentificador" id="radioPlaca" value="placa" checked>
+                                <label class="form-check-label" for="radioPlaca">Placa</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="tipoIdentificador" id="radioSerie" value="serie">
+                                <label class="form-check-label" for="radioSerie">N° Serie</label>
+                            </div>
+
+                            <!-- Input del identificador -->
+                            <input type="text"
+                                   class="form-control mt-2"
+                                   id="inputIdentificador"
+                                   name="identificador"
+                                   th:field="*{identificador}"
+                                   placeholder="Ej: A1B-234 o número de serie" />
+                            <div class="invalid-feedback">Formato inválido.</div>
+                        </div>
+
+                        <!-- Nombre -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Nombre Unidad <span style="color: red;">*</span>
+                            </label>
+                            <input type="text" class="form-control" th:field="*{nombre}" >
+                        </div>
+
+                        <!-- Tipo de Unidad -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Tipo de Unidad <span style="color: red;">*</span>
+                            </label>
+                            <select class="form-select" th:field="*{tipoUnidad.idtipou}" >
+                                <option value="0">Seleccione tipo</option>
+                                <option th:each="tipo : ${tipounidad}" th:value="${tipo.idtipou}" th:text="${tipo.nombre}"></option>
+                            </select>
+                        </div>
+
+                        <!-- Tipo de Combustible -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Tipo de Combustible <span style="color: red;">*</span>
+                            </label>
+                            <select class="form-select" th:field="*{tipoCombustible.idtipocombustible}" >
+                                <option value="0">Seleccione tipo</option>
+                                <option th:each="t : ${tipocombustible}" th:value="${t.idtipocombustible}" th:text="${t.nombre}"></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer bg-white">
+                        <a th:href="@{/Unidades/ListaUnidades}" class="btn btn-outline-secondary rounded-pill">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar
+                        </a>
+                        <button id="btnRegistrarUnidad" type="submit" class="btn btn-success fw-bold">
+                            Registrar
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+    <script>
+        function deshabilitarBoton(formulario) {
+            const boton = formulario.querySelector("button[type='submit']");
+            boton.disabled = true;
+            boton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Guardando...';
+        }
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const input = document.getElementById("inputIdentificador");
+            const radios = document.querySelectorAll("input[name='tipoIdentificador']");
+            let modo = "placa"; // por defecto
+
+            // Detectar cambio entre placa y serie
+            radios.forEach(radio => {
+                radio.addEventListener("change", () => {
+                    modo = document.querySelector("input[name='tipoIdentificador']:checked").value;
+                    input.value = ""; // limpiar al cambiar
+                });
+            });
+
+            // Procesar entrada de texto
+            input.addEventListener("input", () => {
+                let val = input.value;
+
+                if (modo === "placa") {
+                    val = val.toUpperCase();
+
+                    // Solo un guion permitido
+                    const partes = val.split("-");
+                    if (partes.length > 2) {
+                        val = partes[0] + "-" + partes[1].replace(/-/g, '');
+                    }
+
+                    // Eliminar letras inválidas (Ñ, I, O, Q, símbolos)
+                    val = val.replace(/[^A-HJ-NPR-Z0-9\-]/g, '');
+                }
+
+                if (modo === "serie") {
+                    // No transformar a mayúsculas, pero quitar letras prohibidas y símbolos
+                    val = val.replace(/[IOQioqñÑ@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/g, '');
+                }
+
+                input.value = val;
+            });
+        });
+    </script>
+</div>
+
+
