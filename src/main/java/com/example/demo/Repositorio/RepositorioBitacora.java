@@ -41,7 +41,10 @@ public interface RepositorioBitacora extends JpaRepository<BITACORA, Serializabl
             "AND (SIZE(b.detalleBKilometro) > 0 OR SIZE(b.detalleBHoras) > 0)")
     Page<BITACORA> findBitacorasConDetallePorMesYAnio(@Param("mes") int mes, @Param("anio") int anio,Pageable pageable);
 
-
+    @Query("SELECT b FROM BITACORA b " +
+            "WHERE b.mes = :mes AND b.anio = :anio " +
+            "AND (SIZE(b.detalleBKilometro) > 0 OR SIZE(b.detalleBHoras) > 0)")
+    List<BITACORA> findBitacorasConDetallePorMesYAniosp(@Param("mes") int mes, @Param("anio") int anio);
 
     @Query("SELECT DISTINCT b.anio FROM BITACORA b WHERE b.unidad.idunidad = :idUnidad ORDER BY b.anio DESC")
     List<Integer> obtenerAniosPorUnidad(@Param("idUnidad") Integer idUnidad);

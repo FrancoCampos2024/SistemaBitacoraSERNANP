@@ -23,5 +23,5 @@ public interface ServicioBitacora {
     abstract public Page<BITACORA> obtenerBitacorasConDetallePorMesYAnio(int mes, int anio,Pageable pageable);
     abstract public List<Integer> obtenerAniosDisponibles();
     abstract public boolean existeBitacora(int idunidad, int mes, int anio);
-
+    abstract public List<BITACORA> obtenerBitacorasConDetallePorMesYAniosp(int mes, int anio);
 }

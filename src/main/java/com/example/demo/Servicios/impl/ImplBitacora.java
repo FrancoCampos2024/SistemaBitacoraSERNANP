@@ -94,5 +94,10 @@ public class ImplBitacora implements ServicioBitacora {
         return bitacora.isPresent();
     }
 
+    @Override
+    public List<BITACORA> obtenerBitacorasConDetallePorMesYAniosp(int mes, int anio) {
+        return repositorioBitacora.findBitacorasConDetallePorMesYAniosp(mes,anio);
+    }
+
 
 }
