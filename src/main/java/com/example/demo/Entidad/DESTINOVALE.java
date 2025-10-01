@@ -19,9 +19,7 @@ public class DESTINOVALE {
     private float cantidad;
     private float saldorestante;
 
-    @ManyToOne
-    @JoinColumn(name="iddestino", foreignKey = @ForeignKey(name="fk_destinovale_destino"))
-    private DESTINO destino;
+    private String destino;
 
     @ManyToOne
     @JoinColumn(name="idresponsable", foreignKey = @ForeignKey(name = "fk_destinovale_responsable"))
@@ -51,11 +49,11 @@ public class DESTINOVALE {
         this.cantidad = cantidad;
     }
 
-    public DESTINO getDestino() {
+    public String getDestino() {
         return destino;
     }
 
-    public void setDestino(DESTINO destino) {
+    public void setDestino(String destino) {
         this.destino = destino;
     }
 

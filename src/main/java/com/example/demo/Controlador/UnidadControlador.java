@@ -1,12 +1,17 @@
 package com.example.demo.Controlador;
 
 import com.example.demo.Entidad.BITACORA;
+import com.example.demo.Entidad.DETALLEBHORAS;
 import com.example.demo.Entidad.UNIDADES;
 import com.example.demo.Repositorio.RepositorioUnidades;
-import com.example.demo.Servicios.ServicioBitacora;
-import com.example.demo.Servicios.ServicioTipocombustible;
-import com.example.demo.Servicios.ServicioTipounidad;
-import com.example.demo.Servicios.ServicioUnidades;
+import com.example.demo.Servicios.*;
+import com.lowagie.text.*;
+import com.lowagie.text.Font;
+import com.lowagie.text.Image;
+import com.lowagie.text.pdf.ColumnText;
+import com.lowagie.text.pdf.PdfContentByte;
+import com.lowagie.text.pdf.PdfWriter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
@@ -18,8 +23,15 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.awt.*;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("Unidades")
@@ -35,6 +47,8 @@ public class UnidadControlador {
     private ServicioTipounidad servicioTipounidad;
     @Autowired
     private ServicioBitacora servicioBitacora;
+    @Autowired
+    private ServicioDetallebhoras servicioDetallebhoras;
 
 
     @GetMapping("/ListaUnidades")
@@ -61,8 +75,8 @@ public class UnidadControlador {
         model.addAttribute("tipounidad", servicioTipounidad.getTipounidad());
         model.addAttribute("tipocombustible", servicioTipocombustible.listarTipocombustible());
 
-        model.addAttribute("identificador", identificador); // para mantener el filtro
-        model.addAttribute("tipoUnidad", tipoUnidad);       // para mantener el filtro
+        model.addAttribute("identificador", identificador);
+        model.addAttribute("tipoUnidad", tipoUnidad);
 
         return "Unidades/ListarUnidades";
     }
@@ -144,7 +158,7 @@ public class UnidadControlador {
                 return "El número de serie no puede contener la letra Ñ.";
             }
 
-            String regexSerie = "^[A-HJ-NPR-Z0-9]{6,20}$";
+            String regexSerie = "^[A-HJ-NPR-Z0-9-]{6,20}$";
             if (!identificador.matches(regexSerie)) {
                 return "El número de serie debe tener entre 6 y 20 caracteres alfanuméricos válidos (sin I, O, Q ni Ñ).";
             }
@@ -289,6 +303,132 @@ public class UnidadControlador {
         model.addAttribute("bitacorasFiltradas", bitacoras);
         return "Bitacoras/ReporteMensual";
     }
+
+
+    public void generarPDFUnificado(List<BITACORA> lista,int mes, HttpServletResponse response) throws Exception {
+        response.setContentType("application/pdf");
+        String nombrearchivo ="ReporteMensual"+mes+".pdf";
+        response.setHeader("Content-Disposition", "attachment; filename=\""+nombrearchivo+"\"");
+
+
+        Document document = new Document(PageSize.A4);
+        PdfWriter writer = PdfWriter.getInstance(document, response.getOutputStream());
+        document.open();
+
+        for (BITACORA b : lista) {
+
+            int anio = b.getAnio();
+            YearMonth yearMonth = YearMonth.of(anio, mes);
+            int diasDelMes = yearMonth.lengthOfMonth();
+
+            Font fontTitulo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
+            Font fontCabecera = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11);
+            Font fontFila = FontFactory.getFont(FontFactory.HELVETICA, 9);
+            Font fontCabeceraPeque = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
+            Font fontFilaPeque = FontFactory.getFont(FontFactory.HELVETICA, 7);
+            Font fontCabeceraGrande = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12);
+
+            if(b.getUnidad().getTipoUnidad().getMedicion().equalsIgnoreCase("Km")){
+
+            }else{
+
+                List<DETALLEBHORAS> detalle = servicioDetallebhoras.obtenerPorBitacora(b.getIdbitacora());
+                Map<Integer, DETALLEBHORAS> mapadetalles = detalle.stream().
+                        collect(Collectors.toMap(DETALLEBHORAS::getDia,d->d));
+
+                InputStream is = getClass().getResourceAsStream("/static/IMG/BitacoraHorascaratula.jpg");
+
+                if(is != null) {
+                    Image portada = Image.getInstance(is.readAllBytes());
+                    portada.setRotationDegrees(-90f);
+                    portada.scaleToFit(PageSize.A4.getWidth(), PageSize.A4.getHeight());
+                    portada.setAbsolutePosition(0, 0);
+                    document.add(portada);
+
+                    //Nombre de la biotacora en la portada
+                    PdfContentByte canvas = writer.getDirectContent();
+                    canvas.saveState();
+                    canvas.setColorFill(Color.WHITE);
+                    canvas.rectangle(480,5,120,280);
+                    canvas.fill();
+                    Font fontNegra = new Font(Font.HELVETICA, 16,Font.BOLD,Color.BLACK);
+                     int margenx=600,basey=285;
+                    ColumnText.showTextAligned(
+                            canvas,Element.ALIGN_LEFT,
+                            new Phrase("Motor: "+b.getUnidad().getTipoUnidad().getNombre(),fontNegra),
+                            margenx-20, basey-20,-90);
+                    ColumnText.showTextAligned(canvas,
+                            Element.ALIGN_LEFT,
+                            new Phrase("Marca: "+b.getUnidad().getNombre(), fontNegra),
+                            margenx-40, basey - 20, -90);
+                    ColumnText.showTextAligned(canvas,
+                            Element.ALIGN_LEFT,
+                            new Phrase("Serie: "+b.getUnidad().getIdentificador(), fontNegra),
+                            margenx-60, basey - 20, -90);
+                    canvas.restoreState();
+                    document.setPageSize(PageSize.A4.rotate());
+                    document.newPage();
+                }
+                else{
+                    throw new FileNotFoundException("No se encontró la imagen de portada en /static/img/BitacoraHorascaratula.jpg");
+                }
+
+                Paragraph Titulo= new Paragraph("PARTE DIARIO",fontTitulo);
+                Titulo.setAlignment(Element.ALIGN_CENTER);
+                Titulo.setSpacingBefore(5f);
+                Titulo.setSpacingAfter(2f);
+
+                document.add(Titulo);
+
+                String mesTexto = obtenerNombreMes(mes).toUpperCase();
+                Chunk mesChunk = new Chunk(mesTexto, fontCabeceraGrande);
+                mesChunk.setUnderline(1f, -2f); // subrayado para mes
+  
+                Chunk anioChunk = new Chunk(String.valueOf(anio), fontCabeceraGrande);
+                anioChunk.setUnderline(1f, -2f); // subrayado para año
+
+                String unidadTexto = b.getUnidad().getIdentificador() + " - " + b.getUnidad().getNombre();
+                Chunk unidadChunk = new Chunk(unidadTexto, fontCabeceraGrande);
+                unidadChunk.setUnderline(1f, -2f); // subrayado para unidad
+
+                Phrase frase = new Phrase();
+                frase.add(new Chunk("Mes: ", fontCabeceraGrande));
+                frase.add(mesChunk);
+                frase.add(new Chunk("   Año: ", fontCabeceraGrande));
+                frase.add(anioChunk);
+                frase.add(new Chunk("   Unidad: ", fontCabeceraGrande));
+                frase.add(unidadChunk);
+
+                Paragraph cabecera = new Paragraph(frase);
+                cabecera.setAlignment(Element.ALIGN_LEFT);
+                cabecera.setSpacingAfter(8f);
+
+
+            }
+
+        }
+
+
+    }
+
+    private String obtenerNombreMes(int mes) {
+        switch (mes) {
+            case 1: return "Enero";
+            case 2: return "Febrero";
+            case 3: return "Marzo";
+            case 4: return "Abril";
+            case 5: return "Mayo";
+            case 6: return "Junio";
+            case 7: return "Julio";
+            case 8: return "Agosto";
+            case 9: return "Septiembre";
+            case 10: return "Octubre";
+            case 11: return "Noviembre";
+            case 12: return "Diciembre";
+            default: return "";
+        }
+    }
+
 
 
 

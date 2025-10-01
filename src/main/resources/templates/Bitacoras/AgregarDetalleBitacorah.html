@@ -86,10 +86,10 @@
                 <label class="form-label">Hora Fin<span style="color: red;">*</span></label>
                 <input type="time" class="form-control" th:field="*{hfinal}">
             </div>
-
+                <input type="hidden" name="hoperacion" id="hoperacion" th:field="*{hoperacion}">
             <div class="col-md-2">
                 <label class="form-label">Horas Operación<span style="color: red;">*</span></label>
-                <input type="number" step="0.1" class="form-control" th:field="*{hoperacion}" readonly value="0">
+                <input type="text"  class="form-control" id="hoperacion_readable"  readonly value="0">
             </div>
 
             <div class="col-md-2">
@@ -101,7 +101,7 @@
                 <label class="form-label">Vale - Destino - Cantidad</label>
                 <select class="form-select" th:field="*{destinovale.iddestinovale}">
                     <option value="0">Seleccione vale</option>
-                    <option th:each="v : ${vales}" th:value="${v.iddestinovale}" th:text="'Vale Nº ' + ${v.valeCombustible.nvale}+' - '+${v.destino.destino} + ' - ' + ${v.saldorestante + ' gls'}"></option>
+                    <option th:each="v : ${vales}" th:value="${v.iddestinovale}" th:text="'Vale Nº ' + ${v.valeCombustible.nvale}+' - '+${v.destino} + ' - ' + ${v.saldorestante + ' gls'}"></option>
                 </select>
             </div>
 
@@ -174,39 +174,57 @@
     document.addEventListener("DOMContentLoaded", () => {
         const inputInicio = document.querySelector('[name="hinicio"]');
         const inputFin = document.querySelector('[name="hfinal"]');
-        const inputOperacion = document.querySelector('[name="hoperacion"]');
+        const inputOperacion = document.querySelector('[name="hoperacion"]'); // hidden para enviar
+        const inputOperacionReadable = document.getElementById('hoperacion_readable'); // para el usuario
 
         function calcularHorasOperacion() {
+            // seguridad: si no existen los campos, salir
+            if (!inputInicio || !inputFin || !inputOperacion) return;
+
             const inicio = inputInicio.value;
             const fin = inputFin.value;
 
-            // Si alguno de los dos está vacío, mostrar 0.0
+            // Si alguno está vacío, guardar 0.000 y mostrar 0h 0m
             if (!inicio || !fin) {
-                inputOperacion.value = "0.0";
+                inputOperacion.value = "0.000";
+                if (inputOperacionReadable) inputOperacionReadable.value = "0h 0m";
                 return;
             }
 
-            const [h1, m1] = inicio.split(":").map(Number);
-            const [h2, m2] = fin.split(":").map(Number);
+            const [h1, m1] = inicio.split(":").map(v => Number(v));
+            const [h2, m2] = fin.split(":").map(v => Number(v));
+
+            if (Number.isNaN(h1) || Number.isNaN(m1) || Number.isNaN(h2) || Number.isNaN(m2)) {
+                inputOperacion.value = "0.000";
+                if (inputOperacionReadable) inputOperacionReadable.value = "0h 0m";
+                return;
+            }
+
             let minutosInicio = h1 * 60 + m1;
             let minutosFin = h2 * 60 + m2;
             let diferencia = minutosFin - minutosInicio;
 
-            if (diferencia < 0) diferencia += 24 * 60;
+            if (diferencia < 0) diferencia += 24 * 60; // cruza medianoche
 
-            const horas = (diferencia / 60).toFixed(1);
-            inputOperacion.value = horas;
+            // decimal exacto de horas con 3 decimales para mayor precisión
+            const horasDecimal = diferencia / 60;
+            inputOperacion.value = horasDecimal.toFixed(3); // ejemplo: "5.250"
+
+            // versión legible: Xh Ym
+            const horasEnteras = Math.floor(diferencia / 60);
+            const minutosRestantes = diferencia % 60;
+            if (inputOperacionReadable) {
+                inputOperacionReadable.value = `${horasEnteras}h ${minutosRestantes}m`;
+            }
         }
 
-        // Activar cálculo al escribir
+        // eventos
         inputInicio.addEventListener("input", calcularHorasOperacion);
         inputFin.addEventListener("input", calcularHorasOperacion);
-
-        // Activar también al salir del campo, por si borran todo
         inputInicio.addEventListener("blur", calcularHorasOperacion);
         inputFin.addEventListener("blur", calcularHorasOperacion);
 
-        // Calcular al cargar
+        // cálculo inicial
         calcularHorasOperacion();
     });
 </script>

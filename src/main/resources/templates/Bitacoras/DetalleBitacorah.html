@@ -106,7 +106,7 @@
         <td th:text="${detalle.dia}">1</td>
         <td th:text="${detalle.hinicio}">7:00 am</td>
         <td th:text="${detalle.hfinal}">13:00</td>
-        <td th:text="${detalle.hoperacion}">6H</td>
+        <td data-horas-decimal th:text="${detalle.hoperacion}"></td>
         <td th:text="${detalle.combustible}">6 gls</td>
         <td th:text="${detalle.destino}">PVC Calleria - Parte alta</td>
         <td th:text="${detalle.justificacion}">Patrullaje</td>
@@ -228,7 +228,26 @@
       modal.show();
     }
   });
+
+  function decimalToHorasYMinutos(decimalString) {
+    const dec = Number(decimalString);
+    if (Number.isNaN(dec) || dec <= 0) return "0h 0m";
+    const horas = Math.floor(dec);
+    let minutos = Math.round((dec - horas) * 60);
+    if (minutos === 60) {
+      return (horas + 1) + "h 0m";
+    }
+    return horas + "h " + minutos + "m";
+  }
+
+  // Ejemplo: convertir el texto de una celda
+  document.querySelectorAll("td[data-horas-decimal]").forEach(td => {
+    const dec = td.textContent.trim(); // el valor decimal
+    td.textContent = decimalToHorasYMinutos(dec);
+  });
 </script>
+
+
 
 </body>
 </html>

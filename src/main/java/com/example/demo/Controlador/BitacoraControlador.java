@@ -664,7 +664,7 @@ public class BitacoraControlador {
 
     public void generarPDFHoras(BITACORA bitacora, HttpServletResponse response) throws Exception {
         response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "attachment; filename=Bitacora_"+bitacora.getUnidad().getNombre()+"_"+bitacora.getUnidad().getIdentificador()+"_"+obtenerNombreMes(bitacora.getMes())+"/"+bitacora.getAnio()+".pdf");
+        response.setHeader("Content-Disposition", "attachment; filename=Bitacora_"+bitacora.getUnidad().getNombre()+"_"+bitacora.getUnidad().getIdentificador()+"_"+obtenerNombreMes(bitacora.getMes())+"-"+bitacora.getAnio()+".pdf");
 
         List<DETALLEBHORAS> detalles = servicioDetallebhoras.obtenerPorBitacora(bitacora.getIdbitacora());
         Map<Integer, DETALLEBHORAS> mapaDetalles = detalles.stream()
@@ -677,7 +677,6 @@ public class BitacoraControlador {
 
         Document document = new Document(PageSize.A4.rotate());
         PdfWriter writer = PdfWriter.getInstance(document, response.getOutputStream());
-        //PdfWriter.getInstance(document, response.getOutputStream());
         document.open();
 
         InputStream is = getClass().getResourceAsStream("/static/IMG/BitacoraHorascaratula.jpg");
@@ -687,44 +686,35 @@ public class BitacoraControlador {
             portada.scaleToFit(PageSize.A4.getHeight(), PageSize.A4.getWidth());
             portada.setAbsolutePosition(0, 0);
             document.add(portada);
-
             // ahora el canvas
             PdfContentByte canvas = writer.getDirectContent();
-
             // asegurar estado gráfico
             canvas.saveState();
-
             // fondo blanco
             canvas.setColorFill(java.awt.Color.WHITE);
             canvas.rectangle(480, 5, 120, 280); // posición de prueba más abajo
             canvas.fill();
             Font fontNegra = new Font(Font.HELVETICA, 16, Font.BOLD, java.awt.Color.BLACK);
-
             // texto dentro del rectángulo
             int margenX = 600;
             int baseY = 285;
-
             ColumnText.showTextAligned(canvas,
                     Element.ALIGN_LEFT,
                     new Phrase("Motor: "+bitacora.getUnidad().getTipoUnidad().getNombre(), fontNegra),
                     margenX-20, baseY - 20, -90);
-
             ColumnText.showTextAligned(canvas,
                     Element.ALIGN_LEFT,
                     new Phrase("Marca: "+bitacora.getUnidad().getNombre(), fontNegra),
                     margenX-40, baseY - 20, -90);
-
             ColumnText.showTextAligned(canvas,
                     Element.ALIGN_LEFT,
                     new Phrase("Serie: "+bitacora.getUnidad().getIdentificador(), fontNegra),
                     margenX-60, baseY - 20, -90);
-
             canvas.restoreState();
             document.newPage(); // Sigue con el contenido en horizontal
         } else {
             throw new FileNotFoundException("No se encontró la imagen de portada en /static/img/BitacoraHorascaratula.jpg");
         }
-
         Font fontTitulo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
         Font fontCabeceraPeque = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
         Font fontFilaPeque = FontFactory.getFont(FontFactory.HELVETICA, 7);
@@ -763,8 +753,7 @@ public class BitacoraControlador {
 //------------------------------
         PdfPTable tabla = new PdfPTable(11);
         tabla.setWidthPercentage(100);
-        tabla.setWidths(new float[]{0.85f, 2.5f, 2.5f, 2.5f, 1.5f, 2.7f, 7f, 7f, 5f, 3f, 4f});
-
+        tabla.setWidths(new float[]{0.85f, 1.5f, 1.5f, 2.3f, 1.5f, 2.7f, 9f, 9f, 3f, 1.5f, 4f});
         // Fila 1
         tabla.addCell(celdaCabecera("Día", fontCabeceraPeque, 2));
         tabla.addCell(celdaCabeceraColspan("Horas de Operación", fontCabeceraPeque, 3));
@@ -792,11 +781,16 @@ public class BitacoraControlador {
             if (d != null) {
                 tabla.addCell(celdaDato(String.valueOf(d.getHinicio()), fontFilaPeque));
                 tabla.addCell(celdaDato(String.valueOf(d.getHfinal()), fontFilaPeque));
-                tabla.addCell(celdaDato(d.getHoperacion() + " H", fontFilaPeque));
+
+
+                tabla.addCell(celdaDato(convertirhoradecimalastring(d.getHoperacion()), fontFilaPeque));
+
                 tabla.addCell(celdaDato(d.getAceite(), fontFilaPeque));
+
+                String comb= d.getCombustible()+" gln";
                 tabla.addCell(d.getCombustible() == 0 ?
-                        new Phrase(" ", fontFilaPeque) :
-                        new Phrase(d.getCombustible() + " gln", fontFilaPeque));
+                        celdaDato(" ", fontFilaPeque) :
+                        celdaDato(comb, fontFilaPeque));
                 tabla.addCell(celdaDato(d.getDestino(), fontFilaPeque));
                 tabla.addCell(celdaDato(d.getJustificacion(), fontFilaPeque));
                 tabla.addCell(celdaDato(
@@ -808,8 +802,8 @@ public class BitacoraControlador {
                     nvale = d.getDestinovale().getValeCombustible().getNvale();
                 }
                 tabla.addCell(nvale == 0 ?
-                        new Phrase(" ", fontFilaPeque) :
-                        new Phrase(String.valueOf(nvale), fontFilaPeque));
+                        celdaDato(" ", fontFilaPeque) :
+                        celdaDato(String.valueOf(nvale), fontFilaPeque));
                 tabla.addCell(celdaDato(d.getReporte(), fontFilaPeque));
 
                 totalHoras += d.getHoperacion();
@@ -825,7 +819,7 @@ public class BitacoraControlador {
         totalCell.setHorizontalAlignment(Element.ALIGN_CENTER);
         tabla.addCell(totalCell);
 
-        tabla.addCell(celdaDato(String.format("%.2f H", totalHoras), fontCabeceraPeque));
+        tabla.addCell(celdaDato(convertirhoradecimalastring(totalHoras), fontCabeceraPeque));
         tabla.addCell(celdaDato(" ", fontCabeceraPeque));
         tabla.addCell(celdaDato(String.format("%.2f gln", totalCombustible), fontCabeceraPeque));
 
@@ -934,17 +928,17 @@ public class BitacoraControlador {
                     velocimetrofinal = d.getKmfinal();
                 }
 
-                tabla1.addCell(new Phrase(String.valueOf(d.getKminicial()), fontFila));
-                tabla1.addCell(new Phrase((d.getCombustiblegls() != 0) ? d.getCombustiblegls() + " gln" : " ", fontFila));
-                tabla1.addCell(new Phrase((d.getAceitemotor() != 0) ? String.valueOf(d.getAceitemotor()) : " ", fontFila));
-                tabla1.addCell(new Phrase((d.getAceitetransmision() != 0) ? String.valueOf(d.getAceitetransmision()) : " ", fontFila));
-                tabla1.addCell(new Phrase((d.getServiciengrase() != null) ? d.getServiciengrase() : " ", fontFila));
-                tabla1.addCell(new Phrase((d.getServiciomantenimiento() != null) ? d.getServiciomantenimiento() : " ", fontFila));
-                tabla1.addCell(new Phrase((d.getFiltroaceitecambio() != null) ? d.getFiltroaceitecambio() : " ", fontFila));
-                tabla1.addCell(new Phrase((d.getFiltropurificadorcambio() != null) ? d.getFiltropurificadorcambio() : " ", fontFila));
-                tabla1.addCell(new Phrase((d.getBateriacambio() != null) ? d.getBateriacambio() : " ", fontFila));
-                tabla1.addCell(new Phrase(String.valueOf(d.getKmfinal()), fontFila));
-                tabla1.addCell(new Phrase((d.getDestinovale()!=null) ? d.getDestinovale().getValeCombustible().getNvale()+"" : " ", fontFila));
+                tabla1.addCell(celdaDato(String.valueOf(d.getKminicial()), fontFila));
+                tabla1.addCell(celdaDato((d.getCombustiblegls() != 0) ? d.getCombustiblegls() + " gln" : " ", fontFila));
+                tabla1.addCell(celdaDato((d.getAceitemotor() != 0) ? String.valueOf(d.getAceitemotor()) : " ", fontFila));
+                tabla1.addCell(celdaDato((d.getAceitetransmision() != 0) ? String.valueOf(d.getAceitetransmision()) : " ", fontFila));
+                tabla1.addCell(celdaDato((d.getServiciengrase() != null) ? d.getServiciengrase() : " ", fontFila));
+                tabla1.addCell(celdaDato((d.getServiciomantenimiento() != null) ? d.getServiciomantenimiento() : " ", fontFila));
+                tabla1.addCell(celdaDato((d.getFiltroaceitecambio() != null) ? d.getFiltroaceitecambio() : " ", fontFila));
+                tabla1.addCell(celdaDato((d.getFiltropurificadorcambio() != null) ? d.getFiltropurificadorcambio() : " ", fontFila));
+                tabla1.addCell(celdaDato((d.getBateriacambio() != null) ? d.getBateriacambio() : " ", fontFila));
+                tabla1.addCell(celdaDato(String.valueOf(d.getKmfinal()), fontFila));
+                tabla1.addCell(celdaDato((d.getDestinovale()!=null) ? d.getDestinovale().getValeCombustible().getNvale()+"" : " ", fontFila));
 
                 if (d.getCombustiblegls() != 0)
                     totalCombustible += d.getCombustiblegls();
@@ -990,9 +984,9 @@ public class BitacoraControlador {
 
         for (int dia = 1; dia <= diasDelMes; dia++) {
             DETALLEBKILOMETRO d = mapaDetalles.get(dia);
-            tabla2.addCell(new Phrase(String.valueOf(dia), fontFila));
-            tabla2.addCell(new Phrase((d != null && d.getKmrecorridos() != 0) ? String.valueOf(d.getKmrecorridos()) : " ", fontFila));
-            tabla2.addCell(new Phrase((d != null && d.getTrabajosrealizados() != null) ? d.getTrabajosrealizados() : " ", fontFila));
+            tabla2.addCell(celdaDato(String.valueOf(dia), fontFila));
+            tabla2.addCell(celdaDato((d != null && d.getKmrecorridos() != 0) ? String.valueOf(d.getKmrecorridos()) : " ", fontFila));
+            tabla2.addCell(celdaDato((d != null && d.getTrabajosrealizados() != null) ? d.getTrabajosrealizados() : " ", fontFila));
         }
         document.add(tabla2);
 
@@ -1184,17 +1178,17 @@ public class BitacoraControlador {
                         velocimetrofinal = d.getKmfinal();
                     }
 
-                    tabla1.addCell(new Phrase(String.valueOf(d.getKminicial()), fontFila));
-                    tabla1.addCell(new Phrase((d.getCombustiblegls() != 0) ? d.getCombustiblegls() + " gln" : " ", fontFila));
-                    tabla1.addCell(new Phrase((d.getAceitemotor() != 0) ? String.valueOf(d.getAceitemotor()) : " ", fontFila));
-                    tabla1.addCell(new Phrase((d.getAceitetransmision() != 0) ? String.valueOf(d.getAceitetransmision()) : " ", fontFila));
-                    tabla1.addCell(new Phrase((d.getServiciengrase() != null) ? d.getServiciengrase() : " ", fontFila));
-                    tabla1.addCell(new Phrase((d.getServiciomantenimiento() != null) ? d.getServiciomantenimiento() : " ", fontFila));
-                    tabla1.addCell(new Phrase((d.getFiltroaceitecambio() != null) ? d.getFiltroaceitecambio() : " ", fontFila));
-                    tabla1.addCell(new Phrase((d.getFiltropurificadorcambio() != null) ? d.getFiltropurificadorcambio() : " ", fontFila));
-                    tabla1.addCell(new Phrase((d.getBateriacambio() != null) ? d.getBateriacambio() : " ", fontFila));
-                    tabla1.addCell(new Phrase(String.valueOf(d.getKmfinal()), fontFila));
-                    tabla1.addCell(new Phrase((d.getDestinovale()!=null) ? d.getDestinovale().getValeCombustible().getNvale()+"" : " ", fontFila));
+                    tabla1.addCell(celdaDato(String.valueOf(d.getKminicial()), fontFila));
+                    tabla1.addCell(celdaDato((d.getCombustiblegls() != 0) ? d.getCombustiblegls() + " gln" : " ", fontFila));
+                    tabla1.addCell(celdaDato((d.getAceitemotor() != 0) ? String.valueOf(d.getAceitemotor()) : " ", fontFila));
+                    tabla1.addCell(celdaDato((d.getAceitetransmision() != 0) ? String.valueOf(d.getAceitetransmision()) : " ", fontFila));
+                    tabla1.addCell(celdaDato((d.getServiciengrase() != null) ? d.getServiciengrase() : " ", fontFila));
+                    tabla1.addCell(celdaDato((d.getServiciomantenimiento() != null) ? d.getServiciomantenimiento() : " ", fontFila));
+                    tabla1.addCell(celdaDato((d.getFiltroaceitecambio() != null) ? d.getFiltroaceitecambio() : " ", fontFila));
+                    tabla1.addCell(celdaDato((d.getFiltropurificadorcambio() != null) ? d.getFiltropurificadorcambio() : " ", fontFila));
+                    tabla1.addCell(celdaDato((d.getBateriacambio() != null) ? d.getBateriacambio() : " ", fontFila));
+                    tabla1.addCell(celdaDato(String.valueOf(d.getKmfinal()), fontFila));
+                    tabla1.addCell(celdaDato((d.getDestinovale()!=null) ? d.getDestinovale().getValeCombustible().getNvale()+"" : " ", fontFila));
 
                     if (d.getCombustiblegls() != 0)
                         totalCombustible += d.getCombustiblegls();
@@ -1444,7 +1438,7 @@ public class BitacoraControlador {
 
             PdfPTable tabla = new PdfPTable(11);
             tabla.setWidthPercentage(100);
-            tabla.setWidths(new float[]{0.85f, 2.5f, 2.5f, 2.5f, 1.5f, 2.7f, 7f, 7f, 5f, 3f, 4f});
+            tabla.setWidths(new float[]{0.85f, 1.5f, 1.5f, 2.3f, 1.5f, 2.7f, 9f, 9f, 3f, 1.5f, 4f});
 
             // Fila 1
             tabla.addCell(new PdfPCell(new Phrase("Día", fontCabeceraPeque)){{setRowspan(2); setHorizontalAlignment(Element.ALIGN_CENTER);}});
@@ -1468,27 +1462,28 @@ public class BitacoraControlador {
 
             for (int dia = 1; dia <= diasDelMes; dia++) {
                 DETALLEBHORAS d = mapaDetalles.get(dia);
-                tabla.addCell(new Phrase(String.valueOf(dia), fontFilaPeque));
+                tabla.addCell(celdaDato(String.valueOf(dia), fontFilaPeque));
                 if (d != null) {
 
-                    tabla.addCell(new Phrase(String.valueOf(d.getHinicio()), fontFilaPeque));
-                    tabla.addCell(new Phrase(String.valueOf(d.getHfinal()), fontFilaPeque));
-                    tabla.addCell(new Phrase(d.getHoperacion() + " H", fontFilaPeque));
-                    tabla.addCell(new Phrase(d.getAceite(), fontFilaPeque));
-                    if(d.getCombustible()==0){tabla.addCell(new Phrase( " ", fontFilaPeque));}
-                    else{tabla.addCell(new Phrase(d.getCombustible() + " gln", fontFilaPeque));}
-                    tabla.addCell(new Phrase(d.getDestino(), fontFilaPeque));
-                    tabla.addCell(new Phrase(d.getJustificacion(), fontFilaPeque));
-                    tabla.addCell(new Phrase(servicioResponsable.buscarResponsable(d.getResponsable().getIdresponsable()).getNombre(), fontFilaPeque));
+                    tabla.addCell(celdaDato(String.valueOf(d.getHinicio()), fontFilaPeque));
+                    tabla.addCell(celdaDato(String.valueOf(d.getHfinal()), fontFilaPeque));
+
+                    tabla.addCell(celdaDato(convertirhoradecimalastring(d.getHoperacion()), fontFilaPeque));
+                    tabla.addCell(celdaDato(d.getAceite(), fontFilaPeque));
+                    if(d.getCombustible()==0){tabla.addCell(celdaDato( " ", fontFilaPeque));}
+                    else{String comb= d.getCombustible()+" gln" ; tabla.addCell(celdaDato(comb, fontFilaPeque));}
+                    tabla.addCell(celdaDato(d.getDestino(), fontFilaPeque));
+                    tabla.addCell(celdaDato(d.getJustificacion(), fontFilaPeque));
+                    tabla.addCell(celdaDato(servicioResponsable.buscarResponsable(d.getResponsable().getIdresponsable()).getNombre(), fontFilaPeque));
 
                     long nvale = 0;
                     if (d.getDestinovale() != null && d.getDestinovale().getValeCombustible() != null) {
                         nvale = d.getDestinovale().getValeCombustible().getNvale();
                     }
                     if(nvale==0){tabla.addCell(new Phrase(" ", fontFilaPeque));}
-                    else{tabla.addCell(new Phrase(nvale + "", fontFilaPeque));}
+                    else{tabla.addCell(celdaDato(String.valueOf(nvale), fontFilaPeque));}
 
-                    tabla.addCell(new Phrase(d.getReporte(), fontFilaPeque));
+                    tabla.addCell(celdaDato(d.getReporte(), fontFilaPeque));
 
                     totalHoras += d.getHoperacion();
                     totalCombustible += d.getCombustible();
@@ -1504,16 +1499,16 @@ public class BitacoraControlador {
             tabla.addCell(totalCell);
 
             // Celda aceite (vacía o con total si deseas)
-            tabla.addCell(new Phrase(String.format("%.2f H", totalHoras), fontCabeceraPeque));
+            tabla.addCell(celdaDato(convertirhoradecimalastring(totalHoras), fontCabeceraPeque));
 
-            tabla.addCell(new Phrase(" ", fontCabeceraPeque));
+            tabla.addCell(celdaDato(" ", fontCabeceraPeque));
 
             // Celda con total de combustible
-            tabla.addCell(new Phrase(String.format("%.2f gln", totalCombustible), fontCabeceraPeque));
+            tabla.addCell(celdaDato(String.format("%.2f gln", totalCombustible), fontCabeceraPeque));
 
             // Celdas vacías para las demás columnas (Destino, Justificación, Operador, Vale, Mantenimiento)
             for (int i = 0; i < 5; i++) {
-                tabla.addCell(new Phrase(" ", fontCabeceraPeque));
+                tabla.addCell(celdaDato(" ", fontCabeceraPeque));
             }
 
 
@@ -1524,7 +1519,11 @@ public class BitacoraControlador {
         return out.toByteArray();
     }
 
-
+    public String convertirhoradecimalastring(float horas){
+        int h = (int) Math.floor(horas);
+        int m= (int) Math.round((horas-h)*60);
+        return h+"h "+m+"m";
+    }
 
 
     private PdfPCell celda(String texto, Font fuente) {

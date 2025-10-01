@@ -106,28 +106,28 @@
             </thead>
             <tbody>
             <tr th:each="detalle : ${detallebitacorakmPage}">
-                <td th:text="${detalle.dia}">1</td>
-                <td th:text="${detalle.kminicial}">12000</td>
-                <td th:text="${detalle.kmfinal}">12200</td>
-                <td th:text="${detalle.kmrecorridos}">200</td>
-                <td th:text="${detalle.combustiblegls}">8 gls</td>
-                <td th:text="${detalle.aceitemotor}">Sí</td>
-                <td th:text="${detalle.aceitetransmision}">No</td>
-                <td th:text="${detalle.bateriacambio}">No</td>
+                <td th:text="${detalle.dia}"></td>
+                <td th:text="${detalle.kminicial}"></td>
+                <td th:text="${detalle.kmfinal}"></td>
+                <td th:text="${detalle.kmrecorridos}"></td>
+                <td th:text="${detalle.combustiblegls}"></td>
+                <td th:text="${detalle.aceitemotor}"></td>
+                <td th:text="${detalle.aceitetransmision}">N</td>
+                <td th:text="${detalle.bateriacambio}">N</td>
                 <td>
                     <ul class="list-unstyled mb-0">
-                        <li th:if="${detalle.filtroaceitecambio}">Filtro Aceite</li>
-                        <li th:if="${detalle.filtropurificadorcambio}">Filtro Purificador</li>
+                        <li th:if="${detalle.filtroaceitecambio}"></li>
+                        <li th:if="${detalle.filtropurificadorcambio}"></li>
                     </ul>
                 </td>
                 <td>
                     <ul class="list-unstyled mb-0">
-                        <li th:if="${detalle.serviciengrase}">Engrase</li>
-                        <li th:if="${detalle.serviciomantenimiento}">Mantenimiento</li>
+                        <li th:if="${detalle.serviciengrase}"></li>
+                        <li th:if="${detalle.serviciomantenimiento}"></li>
                     </ul>
                 </td>
-                <td th:text="${detalle.trabajosrealizados}" class="ajustar-texto">Cambio de correa</td>
-                <td th:text="${detalle.responsable.nombre}" class="ajustar-texto">Fidel Ricra</td>
+                <td th:text="${detalle.trabajosrealizados}" class="ajustar-texto"></td>
+                <td th:text="${detalle.responsable.nombre}" class="ajustar-texto"></td>
                 <td th:text="${detalle.destinovale != null ? detalle.destinovale.valeCombustible.nvale : ''}" class="ajustar-texto"></td>
                 <td class="text-center">
                     <button type="button"

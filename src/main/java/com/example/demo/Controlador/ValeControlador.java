@@ -16,6 +16,7 @@ import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Month;
@@ -42,8 +43,6 @@ public class ValeControlador {
     private ServicioDetallebkilometro servicioDetallebkilometro;
     @Autowired
     private ServicioDetallebhoras servicioDetallebhoras;
-    @Autowired
-    private ServicioDestino servicioDestino;
     @Autowired
     private ServicioDestinovale servicioDestinovale;
 
@@ -243,7 +242,6 @@ public class ValeControlador {
 
         List<Map<String, Object>> resumenMensual = calcularResumenPorValeHastaSaldoCero(vale);
         model.addAttribute("destinovale",new DESTINOVALE());
-        model.addAttribute("destinos",servicioDestino.listardestinos());
         model.addAttribute("responsables",servicioResponsable.listarResponsables());
         model.addAttribute("resumenMensual", resumenMensual);
         model.addAttribute("vale", vale);
@@ -288,13 +286,13 @@ public class ValeControlador {
             System.out.println("Saldo Usado en horas:"+saldousadoendhoras);
 
             usototalmes = saldousadoendkm + saldousadoendhoras;
-
+            DecimalFormat df = new DecimalFormat("0.####");
             double saldoSiguiente = saldo - usototalmes;
 
             Map<String, Object> fila = new LinkedHashMap<>();
             fila.put("mes", Month.of(mes).getDisplayName(TextStyle.FULL, new Locale("es", "ES")) + " " + anio);
-            fila.put("saldoUsado", usototalmes);
-            fila.put("saldoSiguiente", saldoSiguiente);
+            fila.put("saldoUsado", df.format(usototalmes));
+            fila.put("saldoSiguiente", df.format(saldoSiguiente));
             resumen.add(fila);
             saldo = saldoSiguiente;
 
@@ -336,7 +334,6 @@ public class ValeControlador {
             model.addAttribute("puedeEliminarMap", puedeEliminarMap);
 
             model.addAttribute("destinovale", destinovale); // ← Importante para mantener lo que ya se escribió
-            model.addAttribute("destinos", servicioDestino.listardestinos());
             model.addAttribute("responsables", servicioResponsable.listarResponsables());
             model.addAttribute("resumenMensual", resumenMensual);
             model.addAttribute("vale", vale);
@@ -353,7 +350,7 @@ public class ValeControlador {
 
 
     private String validarDestinoVale(DESTINOVALE destinovale) {
-        if (destinovale.getDestino() == null || destinovale.getDestino().getIddestino() == 0) {
+        if (destinovale.getDestino() == null) {
             return "Debe seleccionar un destino válido.";
         }
         if (destinovale.getResponsable() == null || destinovale.getResponsable().getIdresponsable() == 0) {
