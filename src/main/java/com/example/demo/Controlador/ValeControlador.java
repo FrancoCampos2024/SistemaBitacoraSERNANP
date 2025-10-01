@@ -45,6 +45,8 @@ public class ValeControlador {
     private ServicioDetallebhoras servicioDetallebhoras;
     @Autowired
     private ServicioDestinovale servicioDestinovale;
+    @Autowired
+    private ServicioBitacora servicioBitacora;
 
 
     @GetMapping("/Listavales")
@@ -131,43 +133,6 @@ public class ValeControlador {
     }
 
 
-    private String validarVale(VALECOMBUSTIBLE vale) {
-        if (vale == null) return "Error inesperado: los datos del vale están vacíos.";
-
-        if (vale.getNvale() <= 0) {
-            return "Debe ingresar un número de vale correcto.";
-        }
-
-        VALECOMBUSTIBLE existente = servicioValecombustible.buscarPorNroVale(vale.getNvale());
-        if (existente != null && existente.getIdvcombustible() != vale.getIdvcombustible()) {
-            return "El número de vale ingresado ya existe.";
-        }
-
-
-        if (vale.getFecha() == null) {
-            return "Debe seleccionar una fecha.";
-        }
-
-
-        if (vale.getGrifo() == null || vale.getGrifo().getIdgrifo() == 0) {
-            return "Debe seleccionar un grifo.";
-        }
-
-        if (vale.getTipoCombustible() == null || vale.getTipoCombustible().getIdtipocombustible() == 0) {
-            return "Debe seleccionar un tipo de combustible.";
-        }
-
-        if (vale.getCantidad() <= 0) {
-            return "La cantidad debe ser mayor a cero.";
-        }
-
-        return null;
-    }
-
-
-
-
-
     @GetMapping("/Editar/{id}")
     public String editarVale(@PathVariable int id, Model model,@RequestParam(defaultValue = "0") int pagina) {
 
@@ -244,9 +209,74 @@ public class ValeControlador {
         model.addAttribute("destinovale",new DESTINOVALE());
         model.addAttribute("responsables",servicioResponsable.listarResponsables());
         model.addAttribute("resumenMensual", resumenMensual);
+        model.addAttribute("unidadesusadas",valeusadoporunidades(vale.getNvale()));
         model.addAttribute("vale", vale);
         model.addAttribute("detalleDestinos", detalle);
         return "Combustible/DetalleVale";
+    }
+
+    @PostMapping("/GuardarDestinovale")
+    public String guardarDestino(@ModelAttribute DESTINOVALE destinovale,
+                                 @RequestParam int idvale,
+                                 RedirectAttributes redirect,
+                                 Model model) {
+        VALECOMBUSTIBLE vale=servicioValecombustible.obtenerPorId(idvale);
+        destinovale.setValeCombustible(vale);
+
+        String error = validarDestinoVale(destinovale);
+        if (error != null) {
+
+            model.addAttribute("Error", error);
+            model.addAttribute("abrirModalAgregar", true);
+
+            List<DESTINOVALE> detalle = vale.getDestinos();
+            List<Map<String, Object>> resumenMensual = calcularResumenPorValeHastaSaldoCero(vale);
+
+            Map<Integer, Boolean> puedeEliminarMap = new HashMap<>();
+            for (DESTINOVALE d : detalle) {
+                boolean usadoEnKm = servicioDetallebkilometro.fueUsado(d.getIddestinovale());
+                boolean usadoEnHoras = servicioDetallebhoras.fueUsado(d.getIddestinovale());
+                puedeEliminarMap.put(d.getIddestinovale(), !(usadoEnKm || usadoEnHoras));
+            }
+            model.addAttribute("puedeEliminarMap", puedeEliminarMap);
+
+            model.addAttribute("destinovale", destinovale); // ← Importante para mantener lo que ya se escribió
+            model.addAttribute("responsables", servicioResponsable.listarResponsables());
+            model.addAttribute("resumenMensual", resumenMensual);
+            model.addAttribute("unidadesusadas",valeusadoporunidades(vale.getNvale()));
+            model.addAttribute("vale", vale);
+            model.addAttribute("detalleDestinos", detalle);
+            return "Combustible/DetalleVale";
+        }
+
+        destinovale.setSaldorestante(destinovale.getCantidad());
+        vale.setSaldorestante(vale.getSaldorestante()-destinovale.getCantidad());
+        servicioValecombustible.AgregarValecombustible(vale);
+        servicioDestinovale.agregarDestinovale(destinovale);
+        return "redirect:/Combustible/Detalle/" + idvale;
+    }
+
+    @GetMapping("/Desagsinardestino/{idvdestino}")
+    public String desagsinar(@PathVariable int idvdestino, Model model) {
+        DESTINOVALE dvale= servicioDestinovale.obtenerPorId(idvdestino);
+        VALECOMBUSTIBLE vale=servicioValecombustible.obtenerPorId(dvale.getValeCombustible().getIdvcombustible());
+        vale.setSaldorestante(vale.getSaldorestante()+dvale.getCantidad());
+        servicioValecombustible.AgregarValecombustible(vale);
+        servicioDestinovale.desagsinardestino(dvale);
+        return "redirect:/Combustible/Detalle/" + vale.getIdvcombustible();
+    }
+
+
+
+    @GetMapping("/Destino/{id}")
+    public String mostrarFormularioAsignar(@PathVariable int id, Model model) {
+        DESTINOVALE destino = new DESTINOVALE();
+        destino.setValeCombustible(servicioValecombustible.obtenerPorId(id));
+        model.addAttribute("destino", destino);
+        model.addAttribute("valeId", id);
+        model.addAttribute("responsables", servicioResponsable.listarResponsables());
+        model.addAttribute("abrirModalAsignar", true);
+        return "Combustible/ListarValescombustible";
     }
 
     public List<Map<String, Object>> calcularResumenPorValeHastaSaldoCero(VALECOMBUSTIBLE vale) {
@@ -307,48 +337,6 @@ public class ValeControlador {
 
         return resumen;
     }
-
-    @PostMapping("/GuardarDestinovale")
-    public String guardarDestino(@ModelAttribute DESTINOVALE destinovale,
-                                 @RequestParam int idvale,
-                                 RedirectAttributes redirect,
-                                 Model model) {
-        VALECOMBUSTIBLE vale=servicioValecombustible.obtenerPorId(idvale);
-        destinovale.setValeCombustible(vale);
-
-        String error = validarDestinoVale(destinovale);
-        if (error != null) {
-
-            model.addAttribute("Error", error);
-            model.addAttribute("abrirModalAgregar", true);
-
-            List<DESTINOVALE> detalle = vale.getDestinos();
-            List<Map<String, Object>> resumenMensual = calcularResumenPorValeHastaSaldoCero(vale);
-
-            Map<Integer, Boolean> puedeEliminarMap = new HashMap<>();
-            for (DESTINOVALE d : detalle) {
-                boolean usadoEnKm = servicioDetallebkilometro.fueUsado(d.getIddestinovale());
-                boolean usadoEnHoras = servicioDetallebhoras.fueUsado(d.getIddestinovale());
-                puedeEliminarMap.put(d.getIddestinovale(), !(usadoEnKm || usadoEnHoras));
-            }
-            model.addAttribute("puedeEliminarMap", puedeEliminarMap);
-
-            model.addAttribute("destinovale", destinovale); // ← Importante para mantener lo que ya se escribió
-            model.addAttribute("responsables", servicioResponsable.listarResponsables());
-            model.addAttribute("resumenMensual", resumenMensual);
-            model.addAttribute("vale", vale);
-            model.addAttribute("detalleDestinos", detalle);
-            return "Combustible/DetalleVale";
-        }
-
-        destinovale.setSaldorestante(destinovale.getCantidad());
-        vale.setSaldorestante(vale.getSaldorestante()-destinovale.getCantidad());
-        servicioValecombustible.AgregarValecombustible(vale);
-        servicioDestinovale.agregarDestinovale(destinovale);
-        return "redirect:/Combustible/Detalle/" + idvale;
-    }
-
-
     private String validarDestinoVale(DESTINOVALE destinovale) {
         if (destinovale.getDestino() == null) {
             return "Debe seleccionar un destino válido.";
@@ -366,29 +354,89 @@ public class ValeControlador {
         }
         return null;
     }
+    private String validarVale(VALECOMBUSTIBLE vale) {
+        if (vale == null) return "Error inesperado: los datos del vale están vacíos.";
+
+        if (vale.getNvale() <= 0) {
+            return "Debe ingresar un número de vale correcto.";
+        }
+
+        VALECOMBUSTIBLE existente = servicioValecombustible.buscarPorNroVale(vale.getNvale());
+        if (existente != null && existente.getIdvcombustible() != vale.getIdvcombustible()) {
+            return "El número de vale ingresado ya existe.";
+        }
 
 
-    @GetMapping("/Desagsinardestino/{idvdestino}")
-    public String desagsinar(@PathVariable int idvdestino, Model model) {
-        DESTINOVALE dvale= servicioDestinovale.obtenerPorId(idvdestino);
-        VALECOMBUSTIBLE vale=servicioValecombustible.obtenerPorId(dvale.getValeCombustible().getIdvcombustible());
-        vale.setSaldorestante(vale.getSaldorestante()+dvale.getCantidad());
-        servicioValecombustible.AgregarValecombustible(vale);
-        servicioDestinovale.desagsinardestino(dvale);
-        return "redirect:/Combustible/Detalle/" + vale.getIdvcombustible();
+        if (vale.getFecha() == null) {
+            return "Debe seleccionar una fecha.";
+        }
+
+
+        if (vale.getGrifo() == null || vale.getGrifo().getIdgrifo() == 0) {
+            return "Debe seleccionar un grifo.";
+        }
+
+        if (vale.getTipoCombustible() == null || vale.getTipoCombustible().getIdtipocombustible() == 0) {
+            return "Debe seleccionar un tipo de combustible.";
+        }
+
+        if (vale.getCantidad() <= 0) {
+            return "La cantidad debe ser mayor a cero.";
+        }
+
+        return null;
     }
 
+    private List<Map<String,Object>> valeusadoporunidades(long nvale){
+        List<Map<String,Object>> valeusadoporunidades = new ArrayList<>();
 
+        List<BITACORA> bitacoras = servicioBitacora.listabitacoras();
 
-    @GetMapping("/Destino/{id}")
-    public String mostrarFormularioAsignar(@PathVariable int id, Model model) {
-        DESTINOVALE destino = new DESTINOVALE();
-        destino.setValeCombustible(servicioValecombustible.obtenerPorId(id));
-        model.addAttribute("destino", destino);
-        model.addAttribute("valeId", id);
-        model.addAttribute("responsables", servicioResponsable.listarResponsables());
-        model.addAttribute("abrirModalAsignar", true);
-        return "Combustible/ListarValescombustible";
+        for (BITACORA bitacora : bitacoras) {
+            boolean encontradoEnEstaUnidad = false;
+            float combustibleUsado = 0f;
+
+            if (bitacora.getUnidad() == null || bitacora.getUnidad().getTipoUnidad() == null) {
+                continue; // protección extra
+            }
+
+            if ("Km".equalsIgnoreCase(bitacora.getUnidad().getTipoUnidad().getMedicion())) {
+                List<DETALLEBKILOMETRO> detalles = servicioDetallebkilometro.obtenerPorBitacora(bitacora.getIdbitacora());
+                if (detalles == null) detalles = Collections.emptyList();
+
+                for (DETALLEBKILOMETRO dc : detalles) {
+                    if (dc == null) continue;
+                    DESTINOVALE dest = dc.getDestinovale();
+                    if (dest == null || dest.getValeCombustible() == null) continue;
+                    if (dest.getValeCombustible().getNvale() == nvale) {
+                        encontradoEnEstaUnidad = true;
+                        combustibleUsado += dc.getCombustiblegls();
+                    }
+                }
+            } else {
+                List<DETALLEBHORAS> detalles = servicioDetallebhoras.obtenerPorBitacora(bitacora.getIdbitacora());
+                if (detalles == null) detalles = Collections.emptyList();
+
+                for (DETALLEBHORAS dc : detalles) {
+                    if (dc == null) continue;
+                    DESTINOVALE dest = dc.getDestinovale();
+                    if (dest == null || dest.getValeCombustible() == null) continue;
+                    if (dest.getValeCombustible().getNvale() == nvale) {
+                        encontradoEnEstaUnidad = true;
+                        combustibleUsado += dc.getCombustible();
+                    }
+                }
+            }
+
+            if (encontradoEnEstaUnidad) {
+                Map<String,Object> filaunidad = new HashMap<>();
+                filaunidad.put("unidad", bitacora.getUnidad().getTipoUnidad().getNombre() + " / " + bitacora.getUnidad().getIdentificador());
+                filaunidad.put("combustible", combustibleUsado);
+                valeusadoporunidades.add(filaunidad);
+            }
+        }
+        return valeusadoporunidades;
     }
+
 
 }

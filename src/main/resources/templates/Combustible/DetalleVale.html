@@ -85,7 +85,38 @@
                 </tr>
                 </tbody>
             </table>
+            <!-- ---------- Unidades usadas (pegar DENTRO de col-md-4, justo debajo de la tabla Resumen Mensual) ---------- -->
+            <div class="mt-4">
+                <h6 class="fw-bold text-secondary">
+                    <i class="bi bi-gear-wide-connected me-1"></i> Unidades usadas
+                </h6>
+
+                <div class="table-responsive" style="max-height: 220px; overflow:auto;">
+                    <table class="table table-sm table-bordered align-middle mb-0">
+                        <thead class="table-light text-center">
+                        <tr>
+                            <th style="width:40%;">Unidad</th>
+                            <th style="width:20%;">Combustible</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="u : ${unidadesusadas}">
+                            <td th:text="${u.unidad}"></td>
+                            <td th:text="${u.combustible}+'gls'"></td>
+                        </tr>
+
+                        <tr th:if="${#lists.isEmpty(unidadesusadas)}">
+                            <td colspan="4" class="text-center text-muted">No hay unidades usadas en este periodo.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- ----------------------------------------------------------------------------------- -->
+
         </div>
+
+
 
         <!-- Tabla de destinos -->
         <div class="col-md-8">

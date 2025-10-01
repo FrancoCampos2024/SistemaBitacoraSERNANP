@@ -10,6 +10,7 @@ import java.util.List;
 public interface ServicioBitacora {
     abstract public List<BITACORA>listarsegunidunidad(int id);
 
+    abstract public List<BITACORA> listabitacoras();
     abstract public  List<Integer> buscarmessegununidad(int id, int anio);
     abstract public  void agregarbitacora(BITACORA bitacora);
 

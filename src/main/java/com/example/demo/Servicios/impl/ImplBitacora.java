@@ -32,6 +32,11 @@ public class ImplBitacora implements ServicioBitacora {
     }
 
     @Override
+    public List<BITACORA> listabitacoras() {
+        return repositorioBitacora.findAll();
+    }
+
+    @Override
     public List<Integer> buscarmessegununidad(int id, int anio) {
         return repositorioBitacora.mesesregistrados(id,anio);
     }
