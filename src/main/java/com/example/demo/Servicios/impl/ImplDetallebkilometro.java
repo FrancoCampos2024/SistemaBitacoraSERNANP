@@ -60,4 +60,14 @@ public class ImplDetallebkilometro implements ServicioDetallebkilometro {
     public List<DETALLEBKILOMETRO> obtenerPorBitacora(int idbitacora) {
         return repositorioDetallebkilometro.obtenerPorBitacora(idbitacora);
     }
+
+    @Override
+    public List<DETALLEBKILOMETRO> listadetalles() {
+        return repositorioDetallebkilometro.findAll();
+    }
+
+    @Override
+    public boolean valeexisteenelmes(int mes, int anio, long nvale) {
+        return repositorioDetallebkilometro.existsByBitacora_MesAndBitacora_AnioAndDestinovale_ValeCombustible_Nvale(mes, anio, nvale);
+    }
 }

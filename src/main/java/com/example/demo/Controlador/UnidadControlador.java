@@ -1,16 +1,18 @@
 package com.example.demo.Controlador;
 
-import com.example.demo.Entidad.BITACORA;
-import com.example.demo.Entidad.DETALLEBHORAS;
-import com.example.demo.Entidad.DETALLEBKILOMETRO;
-import com.example.demo.Entidad.UNIDADES;
-import com.example.demo.Repositorio.RepositorioUnidades;
+import com.example.demo.Entidad.*;
 import com.example.demo.Servicios.*;
 import com.lowagie.text.*;
 import com.lowagie.text.Font;
 import com.lowagie.text.Image;
 import com.lowagie.text.pdf.*;
+import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
@@ -22,15 +24,17 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.awt.*;
+
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 @Controller
 @RequestMapping("Unidades")
@@ -52,6 +56,8 @@ public class UnidadControlador {
     private ServicioResponsable servicioResponsable;
     @Autowired
     private ServicioDetallebkilometro servicioDetallebkilometro;
+    @Autowired
+    private ServicioValecombustible servicioValecombustible;
 
 
     @GetMapping("/ListaUnidades")
@@ -319,6 +325,21 @@ public class UnidadControlador {
             return;
         }
         generarPDFUnificado(bitacorasdelmes,mes,response);
+    }
+
+
+    @GetMapping("/DetalleValepormes")
+    public void Reporteenexcel(@RequestParam(required = false) Integer mes,
+                                    @RequestParam(required = false) Integer anio,
+                                    Model model,HttpServletResponse response) throws Exception {
+
+        // List<BITACORA> bitacorasdelmes= servicioBitacora.obtenerBitacorasConDetallePorMesYAniosp(mes, anio);
+
+       // if(bitacorasdelmes==null || bitacorasdelmes.isEmpty()){
+            //response.sendRedirect("/Unidades/ReporteMensual?mes=" + mes + "&anio=" + anio + "&page=0");
+            //return;
+        //}
+       generarExcelresumen(response,mes,anio);
     }
 
     public void generarPDFUnificado(List<BITACORA> lista,int mes, HttpServletResponse response) throws Exception {
@@ -828,10 +849,129 @@ public class UnidadControlador {
         }
     }
 
-    public String convertirhoradecimalastring(float horas){
+    private String convertirhoradecimalastring(float horas){
         int h = (int) Math.floor(horas);
         int m= (int) Math.round((horas-h)*60);
         return h+"h "+m+"m";
+    }
+
+    private void valesusadosenelmesdenoorigen(List<VALECOMBUSTIBLE> valesmes,int mes,int anio){
+        List<VALECOMBUSTIBLE> vales = servicioValecombustible.listarValecombustible();
+        for (VALECOMBUSTIBLE vale : vales) {
+            if(servicioDetallebhoras.valeexistenteenelmes(mes,anio,vale.getNvale())){
+                valesmes.add(vale);
+            }
+            if (servicioDetallebkilometro.valeexisteenelmes(mes,anio,vale.getNvale())){
+                valesmes.add(vale);
+            }
+        }
+    }
+
+    private void generarExcelresumen(HttpServletResponse response, int mes, int anio) throws IOException {
+        // obtener datos (si tu método valesusados... modifica algo, lo dejamos igual)
+        List<VALECOMBUSTIBLE> vales = servicioValecombustible.valespormesyanio(mes, anio);
+        valesusadosenelmesdenoorigen(vales, mes, anio);
+
+        // Preparar respuesta HTTP (importantísimo)
+        String filename = String.format("Resumen_Vales_%02d_%d.xlsx", mes, anio);
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Resumen");
+
+            // Estilos básicos
+            CellStyle titleStyle = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.Font titleFont = workbook.createFont();
+            titleFont.setBold(true);
+            titleFont.setFontHeightInPoints((short) 12);
+            titleStyle.setFont(titleFont);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle dateStyle = workbook.createCellStyle();
+            CreationHelper ch = workbook.getCreationHelper();
+            dateStyle.setDataFormat(ch.createDataFormat().getFormat("dd/MM/yyyy"));
+
+            // Título (fila 0) y merge A1:I1 (0-based)
+            Row row0 = sheet.createRow(0);
+            Cell titleCell = row0.createCell(0);
+            titleCell.setCellValue(String.format("DETALLE DEL COMBUSTIBLE EN LA LIQUIDACIÓN DE LAS BITÁCORAS %s %d, GRIFO ORIENTE",
+                    obtenerNombreMes(mes).toUpperCase(), anio));
+            titleCell.setCellStyle(titleStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 8));
+
+            // Cabeceras en fila 2 (index 2)
+            String[] cabecera = {"ITEM", "FECHA", "VALE", "CANTIDAD", "DESTINO", "UTILIZADO", "RESPONSABLE", "TIMBOS", "GRIFO"};
+            Row headerRow = sheet.createRow(2);
+            for (int i = 0; i < cabecera.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(cabecera[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // Filas de datos: empezar en fila 3 (index 3) y aumentar rowIndex
+            int rowIndex = 3;
+            int item = 1;
+            if (vales != null) {
+                for (VALECOMBUSTIBLE vale : vales) {
+                    Row dataRow = sheet.createRow(rowIndex++);
+
+                    // ITEM
+                    dataRow.createCell(0).setCellValue(item++);
+
+                    // FECHA (si es LocalDate o java.util.Date — controlar)
+                    if (vale.getFecha() != null) {
+                        // Si fecha es LocalDate
+                        dataRow.createCell(1).setCellValue(vale.getFecha().toString());
+                    } else {
+                        dataRow.createCell(1).setCellValue("");
+                    }
+                    // VALE (número)
+                    dataRow.createCell(2).setCellValue(vale.getNvale());
+
+                    // CANTIDAD (numérica)
+                    if (vale.getCantidad() != 0) {
+                        dataRow.createCell(3).setCellValue(vale.getCantidad());
+                    } else {
+                        dataRow.createCell(3).setCellValue(0.0);
+                    }
+
+                    // DESTINO (ejemplo estático, en tu caso toma del detalle o del DTO)
+                    dataRow.createCell(4).setCellValue("ACUERDOS DE CONSERVACIÓN");
+
+                    // UTILIZADO (aquí yo puse ejemplo, reemplaza por la suma real si la tienes)
+                    dataRow.createCell(5).setCellValue(40.00);
+
+                    // RESPONSABLE (ejemplo o valor real si lo tienes en VALECOMBUSTIBLE)
+                   // dataRow.createCell(6).setCellValue(vale.getResponsable() != null ? vale.get().getNombre() : "OSEAS");
+
+                    // TIMBOS
+                    dataRow.createCell(7).setCellValue(0.00);
+
+                    // GRIFO
+                    dataRow.createCell(8).setCellValue("GRIFO ORIENTE");
+                }
+            }
+
+            // Ajustar anchos (hazlo solo para las primeras 9 columnas)
+            for (int i = 0; i < cabecera.length; i++) {
+                sheet.autoSizeColumn(i);
+                // opcional: limitar ancho máximo
+                int maxWidth = 10000;
+                if (sheet.getColumnWidth(i) > maxWidth) sheet.setColumnWidth(i, maxWidth);
+            }
+
+            // Escribir workbook al output (flush implícito al cerrar try-with-resources)
+            try (ServletOutputStream out = response.getOutputStream()) {
+                workbook.write(out);
+                out.flush();
+            }
+        } // workbook cerrado automáticamente aquí
     }
 
 

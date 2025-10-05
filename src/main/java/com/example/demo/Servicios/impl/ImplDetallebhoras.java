@@ -13,6 +13,16 @@ import java.util.List;
 @Service("Serviciodetalleh")
 public class ImplDetallebhoras implements ServicioDetallebhoras {
 
+    @Override
+    public boolean valeexistenteenelmes(int mes, int anio, long nvale) {
+        return repositorioDetallebhoras.existsByBitacora_MesAndBitacora_AnioAndDestinovale_ValeCombustible_Nvale(mes,anio,nvale);
+    }
+
+    @Override
+    public List<DETALLEBHORAS> listardetalles() {
+        return repositorioDetallebhoras.findAll();
+    }
+
     @Autowired
     private RepositorioDetallebhoras repositorioDetallebhoras;
 

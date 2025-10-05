@@ -31,4 +31,5 @@ public interface RepositorioDetallebhoras extends JpaRepository<DETALLEBHORAS, S
     @Query("SELECT d FROM DETALLEBHORAS d WHERE d.bitacora.idbitacora = :idbitacora")
     List<DETALLEBHORAS> obtenerPorBitacora(@Param("idbitacora") int idbitacora);
 
+    boolean existsByBitacora_MesAndBitacora_AnioAndDestinovale_ValeCombustible_Nvale(int mes, int anio, long nvale);
 }

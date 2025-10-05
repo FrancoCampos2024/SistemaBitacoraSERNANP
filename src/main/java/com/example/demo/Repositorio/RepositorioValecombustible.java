@@ -30,5 +30,11 @@ public interface RepositorioValecombustible extends JpaRepository<VALECOMBUSTIBL
 
     VALECOMBUSTIBLE findByNvale(long nvale);
 
+    @Query("SELECT v FROM VALECOMBUSTIBLE v " +
+            "WHERE FUNCTION('MONTH', v.fecha) = :mes " +
+            "AND FUNCTION('YEAR', v.fecha) = :anio")
+    List<VALECOMBUSTIBLE> valesPorMes(@Param("mes") int mes, @Param("anio") int anio);
+
+
 
 }

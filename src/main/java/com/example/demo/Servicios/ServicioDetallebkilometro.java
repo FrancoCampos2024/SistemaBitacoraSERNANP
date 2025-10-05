@@ -17,4 +17,6 @@ public interface ServicioDetallebkilometro {
     abstract public List<DETALLEBKILOMETRO> listardetalleparaconsumoporvale(int idvale,int mes,int anio);
     abstract public boolean fueUsado(int iddestinovale);
     abstract public List<DETALLEBKILOMETRO> obtenerPorBitacora(int idbitacora);
+    abstract public List<DETALLEBKILOMETRO> listadetalles();
+    abstract public boolean valeexisteenelmes(int mes, int anio, long nvale);
 }

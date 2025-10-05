@@ -18,4 +18,7 @@ public interface ServicioDetallebhoras {
     abstract public List<DETALLEBHORAS> listardetalleparaconsumoporvale(int idvale, int mes, int anio);
     abstract public boolean fueUsado(int iddestinovale);
     abstract public List<DETALLEBHORAS> obtenerPorBitacora(int idbitacora);
+    abstract public List<DETALLEBHORAS> listardetalles();
+
+    abstract public boolean valeexistenteenelmes(int mes, int anio, long nvale);
 }

@@ -60,6 +60,11 @@ public class ImplValecombustible implements ServicioValecombustible {
     }
 
     @Override
+    public List<VALECOMBUSTIBLE> valespormesyanio(int mes, int anio) {
+        return repo.valesPorMes(mes,anio);
+    }
+
+    @Override
     public Page<VALECOMBUSTIBLE> buscarPorRangoFechas(Date desde, Date hasta, Pageable pageable) {
         return repo.buscarPorRangoFechas(desde,hasta,pageable);
     }

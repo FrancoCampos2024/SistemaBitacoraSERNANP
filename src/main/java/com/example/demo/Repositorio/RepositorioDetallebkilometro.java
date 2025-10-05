@@ -32,5 +32,5 @@ public interface RepositorioDetallebkilometro extends JpaRepository<DETALLEBKILO
     @Query("SELECT d FROM DETALLEBKILOMETRO d WHERE d.destinovale.valeCombustible.idvcombustible = :idvale AND d.bitacora.mes = :mes AND d.bitacora.anio = :anio")
     List<DETALLEBKILOMETRO> listardetalleparaconsumoporvale(@Param("idvale") int idvale, @Param("mes") int mes, @Param("anio") int anio);
 
-
+    boolean existsByBitacora_MesAndBitacora_AnioAndDestinovale_ValeCombustible_Nvale(int mes, int anio, long nvale);
 }

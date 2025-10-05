@@ -16,5 +16,6 @@ public interface ServicioValecombustible {
         abstract Page<VALECOMBUSTIBLE> listarValecombustiblePaginado(Pageable pageable);
         abstract public VALECOMBUSTIBLE buscarPorNroVale(long nvale);
         abstract public Page<VALECOMBUSTIBLE> buscarPorCoincidenciaNvale(String texto,Pageable pageable);
+        abstract public List<VALECOMBUSTIBLE>valespormesyanio(int mes , int anio);
         abstract public Page<VALECOMBUSTIBLE> buscarPorRangoFechas(Date desde, Date hasta, Pageable pageable);
 }
